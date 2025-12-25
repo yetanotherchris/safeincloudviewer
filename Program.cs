@@ -21,7 +21,6 @@ if (!File.Exists(dbPath))
 try
 {
     string xmlContent = DecryptSafeInCloud(dbPath, password);
-
     XDocument doc = XDocument.Parse(xmlContent);
 
     Console.WriteLine("Enter search term (or press Enter to list all):");
@@ -53,8 +52,23 @@ try
     if (int.TryParse(Console.ReadLine(), out int selection) && selection > 0 && selection <= cardList.Count)
     {
         var selectedCard = cardList[selection - 1];
-        Console.WriteLine("\n--- Entry Details ---");
-        Console.WriteLine(selectedCard.ToString());
+        Console.WriteLine();
+
+        if (selectedCard.Attribute("title") != null)
+            Console.WriteLine($"title: {selectedCard.Attribute("title")?.Value}");
+
+        foreach (var field in selectedCard.Descendants("field"))
+        {
+            string? fieldName = field.Attribute("name")?.Value;
+            string? fieldValue = field.Value;
+
+            if (!string.IsNullOrEmpty(fieldName))
+                Console.WriteLine($"{fieldName}: {fieldValue}");
+        }
+
+        var notes = selectedCard.Element("notes");
+        if (notes != null && !string.IsNullOrWhiteSpace(notes.Value))
+            Console.WriteLine($"notes: {notes.Value}");
     }
 
     return 0;
@@ -97,7 +111,16 @@ static string DecryptSafeInCloud(string dbPath, string password)
 
     byte[] decompressed = Decompress(decryptedData);
 
-    return Encoding.UTF8.GetString(decompressed);
+    int bomOffset = 0;
+    if (decompressed.Length >= 3 &&
+        decompressed[0] == 0xEF &&
+        decompressed[1] == 0xBB &&
+        decompressed[2] == 0xBF)
+    {
+        bomOffset = 3;
+    }
+
+    return Encoding.UTF8.GetString(decompressed, bomOffset, decompressed.Length - bomOffset);
 }
 
 static byte[] ReadByteArray(BinaryReader reader)
@@ -129,7 +152,18 @@ static byte[] Decompress(byte[] data)
     while (offset < data.Length && data[offset] == 0)
         offset++;
 
-    using var compressedStream = new MemoryStream(data, offset, data.Length - offset);
+    if (offset >= data.Length)
+        throw new InvalidDataException("No compressed data found");
+
+    byte zlibHeader1 = data[offset];
+    byte zlibHeader2 = data[offset + 1];
+
+    if ((zlibHeader1 & 0x0F) == 0x08)
+    {
+        offset += 2;
+    }
+
+    using var compressedStream = new MemoryStream(data, offset, data.Length - offset - 4);
     using var deflateStream = new DeflateStream(compressedStream, CompressionMode.Decompress);
     using var resultStream = new MemoryStream();
 
