@@ -29,55 +29,65 @@ try
     string xmlContent = DecryptSafeInCloud(dbPath, password);
     XDocument doc = XDocument.Parse(xmlContent);
 
-    Console.WriteLine("Enter search term (or press Enter to list all):");
-    string? searchTerm = Console.ReadLine();
-
-    var cards = doc.Descendants("card");
-    var filteredCards = cards;
-
-    if (!string.IsNullOrWhiteSpace(searchTerm))
+    while (true)
     {
-        filteredCards = cards.Where(c =>
-            c.Attribute("title")?.Value.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
-    }
+        Console.WriteLine("\nEnter search term (or press Enter to list all, CTRL+C to exit):");
+        string? searchTerm = Console.ReadLine();
 
-    var cardList = filteredCards.ToList();
+        var cards = doc.Descendants("card");
+        var filteredCards = cards;
 
-    if (cardList.Count == 0)
-    {
-        Console.WriteLine("No entries found");
-        return 0;
-    }
-
-    for (int i = 0; i < cardList.Count; i++)
-    {
-        Console.WriteLine($"{i + 1}. {cardList[i].Attribute("title")?.Value}");
-    }
-
-    Console.WriteLine("\nEnter number to view details:");
-    if (int.TryParse(Console.ReadLine(), out int selection) && selection > 0 && selection <= cardList.Count)
-    {
-        var selectedCard = cardList[selection - 1];
-        Console.WriteLine();
-
-        if (selectedCard.Attribute("title") != null)
-            Console.WriteLine($"title: {selectedCard.Attribute("title")?.Value}");
-
-        foreach (var field in selectedCard.Descendants("field"))
+        if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            string? fieldName = field.Attribute("name")?.Value;
-            string? fieldValue = field.Value;
-
-            if (!string.IsNullOrEmpty(fieldName))
-                Console.WriteLine($"{fieldName}: {fieldValue}");
+            filteredCards = cards.Where(c =>
+                c.Attribute("title")?.Value.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
         }
 
-        var notes = selectedCard.Element("notes");
-        if (notes != null && !string.IsNullOrWhiteSpace(notes.Value))
-            Console.WriteLine($"notes: {notes.Value}");
-    }
+        var cardList = filteredCards.ToList();
 
-    return 0;
+        if (cardList.Count == 0)
+        {
+            Console.WriteLine("No entries found");
+            continue;
+        }
+
+        for (int i = 0; i < cardList.Count; i++)
+        {
+            Console.WriteLine($"{i + 1}. {cardList[i].Attribute("title")?.Value}");
+        }
+
+        Console.WriteLine("\nEnter number to view details (or press Enter to search again):");
+        string? input = Console.ReadLine();
+
+        if (string.IsNullOrWhiteSpace(input))
+            continue;
+
+        if (int.TryParse(input, out int selection) && selection > 0 && selection <= cardList.Count)
+        {
+            var selectedCard = cardList[selection - 1];
+            Console.WriteLine();
+
+            if (selectedCard.Attribute("title") != null)
+                Console.WriteLine($"title: {selectedCard.Attribute("title")?.Value}");
+
+            foreach (var field in selectedCard.Descendants("field"))
+            {
+                string? fieldName = field.Attribute("name")?.Value;
+                string? fieldValue = field.Value;
+
+                if (!string.IsNullOrEmpty(fieldName))
+                    Console.WriteLine($"{fieldName}: {fieldValue}");
+            }
+
+            var notes = selectedCard.Element("notes");
+            if (notes != null && !string.IsNullOrWhiteSpace(notes.Value))
+                Console.WriteLine($"notes: {notes.Value}");
+        }
+        else
+        {
+            Console.WriteLine("Invalid selection");
+        }
+    }
 }
 catch (Exception ex)
 {
