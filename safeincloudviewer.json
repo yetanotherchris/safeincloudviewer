@@ -1,19 +1,19 @@
 {
-  "license": "MIT License",
+  "version": "1.0.1",
   "description": "A command line tool for viewing SafeInCloud password database files.",
+  "license": "MIT License",
+  "homepage": "https://github.com/yetanotherchris/safeincloudviewer",
   "architecture": {
     "64bit": {
-      "hash": "",
       "extract_dir": "",
+      "url": "https://github.com/yetanotherchris/safeincloudviewer/releases/download/v1.0.1/safeincloudviewer-v1.0.1-win-x64.exe",
       "pre_install": [
-        "Rename-Item \"$dir\\safeincloudviewer-v0.1.0-win-x64.exe\" \"safeincloudviewer.exe\""
+        "Rename-Item \"$dir\\safeincloudviewer-v1.0.1-win-x64.exe\" \"safeincloudviewer.exe\""
       ],
+      "hash": "9AE963611B9C8C7EF764C3E4AC90EFD1CF2AD690A3CC123C14B591B9D60F60EB",
       "bin": [
         "safeincloudviewer.exe"
-      ],
-      "url": "https://github.com/yetanotherchris/safeincloudviewer/releases/download/v0.1.0/safeincloudviewer-v0.1.0-win-x64.exe"
+      ]
     }
-  },
-  "homepage": "https://github.com/yetanotherchris/safeincloudviewer",
-  "version": "0.1.0"
+  }
 }
