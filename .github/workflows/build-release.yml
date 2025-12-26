@@ -1,0 +1,177 @@
+name: build-and-create-release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+    paths-ignore:
+      - ".github/**"
+      - ".gitignore"
+      - "README.md"
+      - "LICENSE"
+      - "CHANGELOG.md"
+      - "docs/**"
+      - "gitversion.yml"
+      - ".editorconfig"
+      - ".vs/**"
+
+jobs:
+  build:
+    name: Build Native AOT (matrix)
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact_name: linux-x64-build
+            file_name: safeincloudviewer
+          - os: windows-latest
+            rid: win-x64
+            artifact_name: win-x64-build
+            file_name: safeincloudviewer.exe
+          - os: macos-latest
+            rid: osx-x64
+            artifact_name: osx-x64-build
+            file_name: safeincloudviewer
+          - os: macos-latest
+            rid: osx-arm64
+            artifact_name: osx-arm64-build
+            file_name: safeincloudviewer
+
+    runs-on: ${{ matrix.os }}
+    outputs:
+      VERSION: ${{ steps.set_output.outputs.VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+          fetch-depth: 0
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3.2.0
+        with:
+          versionSpec: '6.2.0'
+
+      - name: Get version
+        id: get_version
+        uses: gittools/actions/gitversion/execute@v3.2.0
+
+      - name: Set job output
+        id: set_output
+        shell: pwsh
+        run: |
+          $version = "${{ steps.get_version.outputs.MajorMinorPatch }}"
+          if ([string]::IsNullOrEmpty($version)) {
+            $version = "0.1.0"
+          }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Set VERSION env
+        shell: pwsh
+        run: |
+          $version = "${{ steps.get_version.outputs.MajorMinorPatch }}"
+          if ([string]::IsNullOrEmpty($version)) {
+            $version = "0.1.0"
+          }
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Publish Native AOT
+        run: dotnet publish safeincloudviewer.csproj -c Release -r ${{ matrix.rid }} -p:PublishAot=true -p:StripSymbols=true -p:Version=${{ env.VERSION }} -p:AssemblyVersion=${{ env.VERSION }}.0
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: bin/Release/net10.0/${{ matrix.rid }}/publish/${{ matrix.file_name }}
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release & update scoop
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - name: Set VERSION env
+        run: echo "VERSION=${{ needs.build.outputs.VERSION }}" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-x64-build
+
+      - name: Download Win artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: win-x64-build
+
+      - name: Download macOS x64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: osx-x64-build
+          path: osx-x64/
+
+      - name: Download macOS ARM64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: osx-arm64-build
+          path: osx-arm64/
+
+      - name: Rename artifacts
+        run: |
+          mv safeincloudviewer safeincloudviewer-v${{ env.VERSION }}-linux-x64
+          mv safeincloudviewer.exe safeincloudviewer-v${{ env.VERSION }}-win-x64.exe
+          mv osx-x64/safeincloudviewer safeincloudviewer-v${{ env.VERSION }}-osx-x64
+          mv osx-arm64/safeincloudviewer safeincloudviewer-v${{ env.VERSION }}-osx-arm64
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Release v${{ env.VERSION }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          make_latest: true
+          files: |
+            safeincloudviewer-v${{ env.VERSION }}-win-x64.exe
+            safeincloudviewer-v${{ env.VERSION }}-linux-x64
+            safeincloudviewer-v${{ env.VERSION }}-osx-x64
+            safeincloudviewer-v${{ env.VERSION }}-osx-arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Switch to main branch
+        run: git checkout main
+
+      - id: scoop-file-update
+        name: scoop file version update
+        shell: pwsh
+        run: |
+          & ./updatescoop.ps1 -Version ${{ env.VERSION }}
+
+      - id: brew-file-update
+        name: homebrew formula version update
+        shell: pwsh
+        run: |
+          & ./updatebrew.ps1 -Version ${{ env.VERSION }}
+
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        name: Commit new scoop and homebrew files
+        with:
+          commit_message: Update scoop and homebrew files to version ${{ env.VERSION }}
+          file_pattern: safeincloudviewer.json Formula/safeincloudviewer.rb

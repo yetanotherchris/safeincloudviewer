@@ -3,13 +3,19 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Xml.Linq;
 
+string password;
+
 if (args.Length == 0)
 {
-    Console.WriteLine("Usage: safecloud <password>");
-    return 1;
+    Console.Write("Password: ");
+    password = ReadPassword();
+    Console.WriteLine();
+}
+else
+{
+    password = args[0];
 }
 
-string password = args[0];
 string dbPath = "SafeInCloud.db";
 
 if (!File.Exists(dbPath))
@@ -169,4 +175,20 @@ static byte[] Decompress(byte[] data)
 
     deflateStream.CopyTo(resultStream);
     return resultStream.ToArray();
+}
+
+static string ReadPassword()
+{
+    var password = new StringBuilder();
+    while (true)
+    {
+        var key = Console.ReadKey(intercept: true);
+        if (key.Key == ConsoleKey.Enter)
+            break;
+        if (key.Key == ConsoleKey.Backspace && password.Length > 0)
+            password.Remove(password.Length - 1, 1);
+        else if (!char.IsControl(key.KeyChar))
+            password.Append(key.KeyChar);
+    }
+    return password.ToString();
 }
