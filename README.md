@@ -6,18 +6,18 @@ Decrypt and view SafeInCloud password database files in the terminal. As there i
 
 ## Installation
 
-### Scoop (Windows)
-
-```
-scoop bucket add safeincloudviewer https://github.com/yetanotherchris/safeincloudviewer
-scoop install safeincloudviewer
-```
-
 ### Homebrew (macOS/Linux)
 
 ```
 brew tap yetanotherchris/safeincloudviewer https://github.com/yetanotherchris/safeincloudviewer
 brew install safeincloudviewer
+```
+
+### Scoop (Windows)
+
+```
+scoop bucket add safeincloudviewer https://github.com/yetanotherchris/safeincloudviewer
+scoop install safeincloudviewer
 ```
 
 ## Usage
