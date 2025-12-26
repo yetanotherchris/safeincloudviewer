@@ -82,7 +82,7 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore safeincloudviewer.csproj
 
       - name: Publish Native AOT
         run: dotnet publish safeincloudviewer.csproj -c Release -r ${{ matrix.rid }} -p:PublishAot=true -p:StripSymbols=true -p:Version=${{ env.VERSION }} -p:AssemblyVersion=${{ env.VERSION }}.0
