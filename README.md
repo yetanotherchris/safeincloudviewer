@@ -1,6 +1,24 @@
 # SafeInCloud Viewer
 
+![GitHub Release](https://img.shields.io/github/v/release/yetanotherchris/safeincloudviewer)
+
 Decrypt and view SafeInCloud password database files in the terminal. As there is no Linux client, this app is intended for Linux use.
+
+## Installation
+
+### Scoop (Windows)
+
+```
+scoop bucket add safeincloudviewer https://github.com/yetanotherchris/safeincloudviewer
+scoop install safeincloudviewer
+```
+
+### Homebrew (macOS/Linux)
+
+```
+brew tap yetanotherchris/safeincloudviewer https://github.com/yetanotherchris/safeincloudviewer
+brew install safeincloudviewer
+```
 
 ## Usage
 
